@@ -1,0 +1,10 @@
+[package]
+name = "OS"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+nom = "8.0.0"
+nom-language = "0.1.0"
+reedline = "0.45.0"
+ctrlc = "3.4.2"
