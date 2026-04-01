@@ -26,6 +26,8 @@ use crate::{
     parser::{parse_ast, parse_decl},
 };
 
+use crate::types::{type_of, Context};
+
 struct LambdaPrompt;
 
 impl Prompt for LambdaPrompt {
@@ -127,6 +129,18 @@ pub fn main() {
             Ok((_, (name, ast))) => {
                 interrupted.store(false, Ordering::SeqCst);
                 let mut term = ast.clone().desugar(&module);
+
+                let mut ctx = Context::new();
+                match type_of(&term, &mut ctx) {
+                    Ok(ty) => {
+                        println!("Type: {:?}", ty);
+                    }
+                    Err(e) => {
+                        println!("Type error: {:?}", e);
+                        continue;
+                    }
+                }
+
                 let mut counter = 0;
 
                 if trace {
