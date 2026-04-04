@@ -109,5 +109,20 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
                 other => Err(ExpectedFunction(other)),
             }
         }
+
+        Term::Add(t1, t2)
+        | Term::Sub(t1, t2)
+        | Term::Mul(t1, t2) => {
+            let t1_ty = type_of(t1, ctx)?;
+            let t2_ty = type_of(t2, ctx)?;
+
+            if t1_ty == Type::Nat && t2_ty == Type::Nat {
+                Ok(Type::Nat)
+            } else {
+                Err(TypeError::ExpectedNat(
+                    if t1_ty != Type::Nat { t1_ty } else { t2_ty }
+                ))
+            }
+        }
     }
 }
