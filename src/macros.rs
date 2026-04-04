@@ -1,17 +1,25 @@
 #[macro_export]
+
+macro_rules! t_ty {
+    (Nat) => {
+        crate::types::Type::Nat
+    };
+    ($t1:tt -> $($t2:tt)+) => {
+        crate::types::Type::Arrow(
+            Box::new(t_ty!($t1)),
+            Box::new(t_ty!($($t2)+)),
+        )
+    };
+}
+
+#[macro_export]
 /// Build lambda terms using a token-tree muncher.
 macro_rules! t {
-    // Abstraction has the lowest precedence and must appear at top level
-    (fun $var:ident => $($body:tt)+) => {
-        programming_language::term::Term::Abs {
-            var: stringify!($var).to_string(),
-            body: Box::new(t!($($body)+)),
-        }
-    };
     // Shorthand lambda
-    ($var:ident => $($body:tt)+) => {
+    ($var:ident : $($ty:tt)+ => $($body:tt)+) => {
         crate::term::Term::Abs {
             var: stringify!($var).to_string(),
+            ty: t_ty!($($ty)+),
             body: Box::new(t!($($body)+)),
         }
     };

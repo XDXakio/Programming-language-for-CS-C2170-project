@@ -1,4 +1,4 @@
-use crate::{ast::AST, term::Term};
+use crate::{ast::AST, term::Term, types::Type};
 
 use AST::*;
 
@@ -9,6 +9,7 @@ pub struct Module(Vec<(String, AST)>);
 fn succ() -> AST {
     Abs {
         var: "n".to_string(),
+        ty: Type::Nat,
         body: Box::new(Succ(Box::new(Var("n".to_string())))),
     }
 }
@@ -16,10 +17,16 @@ fn succ() -> AST {
 fn rec() -> AST {
     Abs {
         var: "n".to_string(),
+        ty: Type::Nat,
         body: Box::new(Abs {
             var: "z".to_string(),
+            ty: Type::Nat,
             body: Box::new(Abs {
                 var: "s".to_string(),
+                ty: Type::Func(
+                    Box::new(Type::Nat),
+                    Box::new(Type::Func(Box::new(Type::Nat), Box::new(Type::Nat))),
+                ),
                 body: Box::new(Rec {
                     scrutinee: Box::new(Var("n".to_string())),
                     if_zero: Box::new(Var("z".to_string())),
@@ -31,6 +38,10 @@ fn rec() -> AST {
 }
 
 impl Module {
+    pub fn get_term_ast(&self, name: &str) -> Option<&AST> {
+        self.0.iter().rfind(|(n, _)| n == name).map(|(_, ast)| ast)
+    }
+
     pub fn new() -> Self {
         Self::default()
     }
@@ -62,7 +73,6 @@ impl Module {
     }
 
     pub fn get_term(&self, name: &str) -> Option<Term> {
-        // Note: this might accidentally reference a declaration that is defined later as the declaration names need not be unique.
         let ast = self.get(name).cloned()?;
         Some(ast.desugar(self))
     }

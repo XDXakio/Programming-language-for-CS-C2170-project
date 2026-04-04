@@ -36,16 +36,20 @@ fn test_type_and_eval_pipeline() {
 }
 
 #[test]
-fn test_module_declarations() {
-    let input = "
-    a = 1
-    b = a
-    ";
+    fn test_module_declarations() {
+        // Input with spaces and newlines
+        let input = "a = 1\nb = a";
 
-    let (_, module) = parse_module(input).unwrap();
+        // Parse the module
+        let (_, module) = parse_module(input).expect("Failed to parse module");
 
-    let term = module.get_term("b").unwrap();
-    let result = term.multistep();
+        // Get the AST for 'b' and desugar into a Term
+        let ast_b = module.get_term_ast("b").expect("Module should contain 'b'");
+        let term_b = ast_b.clone().desugar(&module);
 
-    assert_eq!(result, programming_language::term::nat(1));
-}
+        // Evaluate the term fully
+        let result = term_b.multistep();
+
+        // Expect that 'b' evaluates to 1
+        assert_eq!(result, programming_language::term::nat(1));
+    }

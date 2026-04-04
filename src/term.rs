@@ -7,6 +7,7 @@ pub enum Term {
     Var(String),
     Abs {
         var: String,
+        ty: crate::types::Type,
         body: Box<Term>,
     },
     App(Box<Term>, Box<Term>),
@@ -60,7 +61,7 @@ impl Term {
         fn go<'a>(t: &'a Term, out: &mut HashSet<&'a str>) {
             match t {
                 Var(v) => { out.insert(v); }
-                Abs { var, body } => {
+                Abs { var, ty: _, body } => {
                     go(body, out);
                     out.remove(var.as_str());
                 }
@@ -84,7 +85,7 @@ impl Term {
     pub fn rename(&mut self, var: &str, new: &str) {
         match self {
             Var(v) => { if v == var { *v = new.to_string(); } }
-            Abs { var: b, body } => {
+            Abs { var: b, ty: _, body } => {
                 if b == var { *b = new.to_string(); }
                 body.rename(var, new);
             }
@@ -105,9 +106,9 @@ impl Term {
         match self {
             Var(v) => if v == var { value.clone() } else { Var(v) },
             App(l, r) => App(Box::new(l.subst(var, value)), Box::new(r.subst(var, value))),
-            Abs { var: b, body } => {
+            Abs { var: b, ty, body } => {
                 if b == var {
-                    Abs { var: b, body } // binder shadows var
+                    Abs { var: b, ty, body } // binder shadows var
                 } else {
                     let fv_value = value.free_vars();
                     if fv_value.contains(b.as_str()) {
@@ -119,10 +120,11 @@ impl Term {
                         body_owned.rename(b.as_str(), &fresh);
                         Abs {
                             var: fresh,
+                            ty,
                             body: Box::new(body_owned.subst(var, value)),
                         }
                     } else {
-                        Abs { var: b, body: Box::new(body.subst(var, value)) }
+                        Abs { var: b, ty, body: Box::new(body.subst(var, value)) }
                     }
                 }
             }

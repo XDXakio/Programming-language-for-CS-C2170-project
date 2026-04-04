@@ -28,14 +28,16 @@ pub fn eq_alpha<'l, 'r>(
         (Var(a), Var(b)) => eq_var_alpha(&l_ctx, a, &r_ctx, b),
 
         (App(l1, l2), App(r1, r2)) => {
-            let l_ctx1 = l_ctx.clone();
-            let r_ctx1 = r_ctx.clone();
-
-            eq_alpha(l_ctx1, l1, r_ctx1, r1)
+            eq_alpha(l_ctx.clone(), l1, r_ctx.clone(), r1)
                 && eq_alpha(l_ctx, l2, r_ctx, r2)
         }
 
-        (Abs { var: la, body: lbody }, Abs { var: ra, body: rbody }) => {
+        (Abs { var: la, ty: lty, body: lbody },
+        Abs { var: ra, ty: rty, body: rbody }) => {
+            if lty != rty {
+                return false;
+            }
+
             l_ctx.push(la.as_str());
             r_ctx.push(ra.as_str());
             eq_alpha(l_ctx, lbody, r_ctx, rbody)
@@ -48,18 +50,9 @@ pub fn eq_alpha<'l, 'r>(
         Ite { cond: lc, if_true: lt, if_false: lf },
         Ite { cond: rc, if_true: rt, if_false: rf },
         ) => {
-            let l_ctx_cond = l_ctx.clone();
-            let r_ctx_cond = r_ctx.clone();
-
-            let l_ctx_true = l_ctx.clone();
-            let r_ctx_true = r_ctx.clone();
-
-            let l_ctx_false = l_ctx;
-            let r_ctx_false = r_ctx;
-
-            eq_alpha(l_ctx_cond, lc, r_ctx_cond, rc)
-                && eq_alpha(l_ctx_true, lt, r_ctx_true, rt)
-                && eq_alpha(l_ctx_false, lf, r_ctx_false, rf)
+            eq_alpha(l_ctx.clone(), lc, r_ctx.clone(), rc)
+                && eq_alpha(l_ctx.clone(), lt, r_ctx.clone(), rt)
+                && eq_alpha(l_ctx, lf, r_ctx, rf)
         }
 
         (Zero, Zero) => true,

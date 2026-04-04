@@ -1,8 +1,9 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 
 use crate::term::Term;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     Bool,
     Nat,
@@ -31,15 +32,15 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
                 .ok_or(UnboundVariable(x.clone()))
         }
 
-        Term::Abs { var, body } => {
-            let param_type = Type::Nat; //Temporary
-            ctx.insert(var.clone(), param_type.clone());
-
+        Term::Abs { var, ty, body } => {
+            let old = ctx.insert(var.clone(), ty.clone());
             let body_type = type_of(body, ctx)?;
-
-            ctx.remove(var);
-
-            Ok(Func(Box::new(param_type), Box::new(body_type)))
+            if let Some(old_ty) = old {
+                ctx.insert(var.clone(), old_ty);
+            } else {
+                ctx.remove(var);
+            }
+            Ok(Type::Func(Box::new(ty.clone()), Box::new(body_type)))
         }
 
         Term::App(t1,t2 ) => {
@@ -96,10 +97,16 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
             let z_type = type_of(if_zero, ctx)?;
             let s_case_type = type_of(if_succ, ctx)?;
 
-            if z_type == s_case_type {
-                Ok(z_type)
-            } else {
-                Err(Mismatch(z_type, s_case_type))
+            match s_case_type {
+                Func(nat_ty, rest) if *nat_ty == Nat => {
+                    match *rest {
+                        Func(t_ty, result_ty) if *t_ty == z_type => {
+                            Ok(*result_ty)
+                        }
+                        other => Err(ExpectedFunction(other)),
+                    }
+                }
+                other => Err(ExpectedFunction(other)),
             }
         }
     }

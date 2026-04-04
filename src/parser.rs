@@ -106,33 +106,39 @@ pub fn parse_app<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str,
 }
 
 /// Parses a long-form lambda: `fun x, body`.
+use crate::types::Type;
+
+fn parse_type(input: &str) -> IResult<&str, Type> {
+    alt((
+        value(Type::Nat, tag("Nat")),
+        value(Type::Bool, tag("Bool")),
+    ))
+    .parse(input)
+}
+/// Parses a short-form lambda: `x => body`.
 pub fn parse_abs<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str, AST> {
-    (
-        tag("fun"),
-        space1,
-        |i| parse_lambda_var(module, i),
-        lex(tag(",")),
-        |i| parse_ast(module, i),
-    )
-        .map(|(_, _, var, _, body)| Abs {
-            var: var.to_string(),
-            body: Box::new(body),
-        })
-        .parse(input)
+    let (input, var) = parse_lambda_var(module, input)?;
+    
+    // Optional type annotation (e.g., x: Nat)
+    let (input, ty) = if let Ok((input, _)) = lex(tag(":")).parse(input) {
+        let (input, ty) = parse_type(input)?;
+        (input, ty)
+    } else {
+        (input, Type::Nat) // default type for untyped lambdas
+    };
+
+    // Require '=>'
+    let (input, _) = lex(tag("=>")).parse(input)?;
+    
+    // Parse body
+    let (input, body) = parse_ast(module, input)?;
+
+    Ok((input, AST::Abs { var: var.to_string(), ty, body: Box::new(body) }))
 }
 
-/// Parses a short-form lambda: `x => body`.
-pub fn parse_abs_short<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str, AST> {
-    (
-        |i| parse_lambda_var(module, i),
-        lex(tag("=>")),
-        |i| parse_ast(module, i),
-    )
-        .map(|(var, _, body)| Abs {
-            var: var.to_string(),
-            body: Box::new(body),
-        })
-        .parse(input)
+pub fn parse_lambda<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str, AST> {
+    let (input, _) = opt(lex(tag("fun"))).parse(input)?; // optional 'fun'
+    parse_abs(module, input)
 }
 
 /// Parses a parenthesized expression.
@@ -146,8 +152,7 @@ pub fn parse_atom<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str
         |i| parse_paren(module, i),
         |i| parse_ite(module, i),
         parse_bool,
-        |i| parse_abs(module, i),
-        |i| parse_abs_short(module, i),
+        |i| parse_lambda(module, i),
         parse_nat,
         |i| parse_var(module, i),
     ))

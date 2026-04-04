@@ -1,7 +1,7 @@
 use crate::{
     module::Module,
     t,
-    term::{Term, nat},
+    term::{Term, nat}, types::Type,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -10,6 +10,7 @@ pub enum AST {
     Var(String),
     Abs {
         var: String,
+        ty: Type,
         body: Box<AST>,
     },
     App(Box<AST>, Box<AST>),
@@ -63,101 +64,255 @@ pub fn decode_nat(mut t: &Term) -> Option<u64> {
 }
 
 pub fn and() -> Term {
-    let inner = Term::Ite {
-        cond: Box::new(t!(b1)),
-        if_true: Box::new(t!(b2)),
-        if_false: Box::new(Term::False),
-    };
-    t!(b1 => b2 => !inner)
+    Term::Abs {
+        var: "b1".to_string(),
+        ty: Type::Bool,
+        body: Box::new(Term::Abs {
+            var: "b2".to_string(),
+            ty: Type::Bool,
+            body: Box::new(Term::Ite {
+                cond: Box::new(Term::Var("b1".to_string())),
+                if_true: Box::new(Term::Var("b2".to_string())),
+                if_false: Box::new(Term::False),
+            }),
+        }),
+    }
 }
 
 pub fn not() -> Term {
-    let inner = Term::Ite {
-        cond: Box::new(t!(a)),
-        if_true: Box::new(Term::False),
-        if_false: Box::new(Term::True),
-    };
-    t!(a => !inner)
+    Term::Abs {
+        var: "a".to_string(),
+        ty: Type::Bool,
+        body: Box::new(Term::Ite {
+            cond: Box::new(Term::Var("a".to_string())),
+            if_true: Box::new(Term::False),
+            if_false: Box::new(Term::True),
+        }),
+    }
 }
 
 pub fn or() -> Term {
-    let inner = Term::Ite {
-        cond: Box::new(t!(b1)),
-        if_true: Box::new(Term::True),
-        if_false: Box::new(t!(b2)),
-    };
-    t!(b1 => b2 => !inner)
+    Term::Abs {
+        var: "b1".to_string(),
+        ty: Type::Bool,
+        body: Box::new(Term::Abs {
+            var: "b2".to_string(),
+            ty: Type::Bool,
+            body: Box::new(Term::Ite {
+                cond: Box::new(Term::Var("b1".to_string())),
+                if_true: Box::new(Term::True),
+                if_false: Box::new(Term::Var("b2".to_string())),
+            }),
+        }),
+    }
 }
 
 /// The predecessor function for natural numbers
 pub fn pred() -> Term {
-    let body = Term::Rec {
-        scrutinee: Box::new(t!(n)),
-        if_zero: Box::new(Term::Zero),
-        if_succ: Box::new(t!(pred => ih => pred)),
-    };
-    t!(n => !body)
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Rec {
+            scrutinee: Box::new(Term::Var("n".to_string())),
+            if_zero: Box::new(Term::Zero),
+            if_succ: Box::new(Term::Abs {
+                var: "pred".to_string(),
+                ty: Type::Nat,
+                body: Box::new(Term::Abs {
+                    var: "ih".to_string(),
+                    ty: Type::Nat,
+                    body: Box::new(Term::Var("pred".to_string())),
+                }),
+            }),
+        }),
+    }
 }
 
 pub fn plus() -> Term {
-    let body = Term::Rec {
-        scrutinee: Box::new(t!(n)),
-        if_zero: Box::new(t!(m)),
-        if_succ: Box::new(t!(pred => ih => !(Term::Succ(Box::new(t!(ih)))))),
-    };
-    t!(n => m => !body)
+    let n = Term::Var("n".to_string());
+    let m = Term::Var("m".to_string());
+
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Abs {
+            var: "m".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Term::Rec {
+                scrutinee: Box::new(n),
+                if_zero: Box::new(m),
+                if_succ: Box::new(Term::Abs {
+                    var: "pred".to_string(),
+                    ty: Type::Nat,
+                    body: Box::new(Term::Abs {
+                        var: "ih".to_string(),
+                        ty: Type::Nat,
+                        body: Box::new(Term::Succ(Box::new(Term::Var("ih".to_string())))),
+                    }),
+                }),
+            }),
+        }),
+    }
 }
 
 pub fn mult() -> Term {
-    let body = Term::Rec {
-        scrutinee: Box::new(t!(n)),
-        if_zero: Box::new(Term::Zero),
-        if_succ: Box::new(t!(pred => ih => !(plus()) m ih)),
-    };
-    t!(n => m => !body)
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Abs {
+            var: "m".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Term::Rec {
+                scrutinee: Box::new(Term::Var("n".to_string())),
+                if_zero: Box::new(Term::Zero),
+                if_succ: Box::new(Term::Abs {
+                    var: "pred".to_string(),
+                    ty: Type::Nat,
+                    body: Box::new(Term::Abs {
+                        var: "ih".to_string(),
+                        ty: Type::Nat,
+                        body: Box::new(Term::App(
+                            Box::new(Term::App(Box::new(plus()), Box::new(Term::Var("m".to_string())))),
+                            Box::new(Term::Var("ih".to_string())),
+                        )),
+                    }),
+                }),
+            }),
+        }),
+    }
 }
 
 pub fn minus() -> Term {
-    let body = Term::Rec {
-        scrutinee: Box::new(t!(m)),
-        if_zero: Box::new(t!(n)),
-        if_succ: Box::new(t!(pred => ih => !(pred()) ih)),
-    };
-    t!(n => m => !body)
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Abs {
+            var: "m".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Term::Rec {
+                scrutinee: Box::new(Term::Var("m".to_string())),
+                if_zero: Box::new(Term::Var("n".to_string())),
+                if_succ: Box::new(Term::Abs {
+                    var: "pred".to_string(),
+                    ty: Type::Nat,
+                    body: Box::new(Term::Abs {
+                        var: "ih".to_string(),
+                        ty: Type::Nat,
+                        body: Box::new(Term::Var("ih".to_string())),
+                    }),
+                }),
+            }),
+        }),
+    }
 }
 
 pub fn is_zero() -> Term {
-    let body = Term::Rec {
-        scrutinee: Box::new(t!(n)),
-        if_zero: Box::new(Term::True),
-        if_succ: Box::new(t!(pred => ih => !(Term::False))),
-    };
-    t!(n => !body)
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Rec {
+            scrutinee: Box::new(Term::Var("n".to_string())),
+            if_zero: Box::new(Term::True),
+            if_succ: Box::new(Term::Abs {
+                var: "pred".to_string(),
+                ty: Type::Nat,
+                body: Box::new(Term::Abs {
+                    var: "ih".to_string(),
+                    ty: Type::Nat,
+                    body: Box::new(Term::False),
+                }),
+            }),
+        }),
+    }
 }
 
 pub fn eq() -> Term {
-    t!(n => m => !(and()) (!(le()) n m) (!(le()) m n))
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Abs {
+            var: "m".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Term::App(
+                Box::new(Term::App(Box::new(and()), 
+                    Box::new(Term::App(Box::new(is_zero()), Box::new(Term::App(Box::new(minus()), Box::new(Term::Var("n".to_string())))))))),
+                Box::new(Term::App(Box::new(is_zero()), Box::new(Term::App(Box::new(minus()), Box::new(Term::Var("m".to_string()))))))
+            )),
+        }),
+    }
 }
 
 pub fn neq() -> Term {
-    t!(n => m => !(not()) (!(eq()) n m))
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Abs {
+            var: "m".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Term::App(
+                Box::new(not()),
+                Box::new(Term::App(Box::new(eq()), Box::new(Term::Var("n".to_string())))),
+            )),
+        }),
+    }
 }
 
 pub fn le() -> Term {
-    t!(n => m => !(is_zero()) (!(minus()) n m))
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Abs {
+            var: "m".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Term::App(
+                Box::new(is_zero()),
+                Box::new(Term::App(Box::new(minus()), Box::new(Term::Var("n".to_string())))),
+            )),
+        }),
+    }
 }
 
 pub fn lt() -> Term {
     // Note: must use Succ rather than pred as 0 is not < 0
-    t!(n => m => !(le()) !(Term::Succ(Box::new(t!(n)))) m)
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Abs {
+            var: "m".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Term::App(
+                Box::new(le()),
+                Box::new(Term::App(
+                    Box::new(Term::Succ(Box::new(Term::Var("n".to_string())))),
+                    Box::new(Term::Var("m".to_string())),
+                )),
+            )),
+        }),
+    }
 }
 
 pub fn ge() -> Term {
-    t!(n => m => !(le()) m n)
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Abs {
+            var: "m".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Term::App(Box::new(le()), Box::new(Term::Var("m".to_string())))),
+        }),
+    }
 }
 
 pub fn gt() -> Term {
-    t!(n => m => !(lt()) m n)
+    Term::Abs {
+        var: "n".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Term::Abs {
+            var: "m".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Term::App(Box::new(lt()), Box::new(Term::Var("m".to_string())))),
+        }),
+    }
 }
 
 impl AST {
@@ -166,8 +321,9 @@ impl AST {
 
         match self {
             Var(x) => Term::Var(x),
-            Abs { var, body } => Term::Abs {
+            Abs { var,ty, body } => Term::Abs {
                 var,
+                ty,
                 body: Box::new(d(*body)),
             },
             App(t1, t2) => t!(!(d(*t1)) !(d(*t2))),

@@ -1,7 +1,24 @@
 use std::fmt::Display;
 
-use crate::{ast::decode_nat, t, term::Term};
+use crate::{ast::decode_nat, t, term::Term, types::Type,};
 use Term::*;
+
+impl Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Type::Bool => write!(f, "Bool"),
+            Type::Nat => write!(f, "Nat"),
+            Type::Func(t1, t2) => {
+                // Parentheses for clarity if input is a function type
+                if matches!(**t1, Type::Func(_, _)) {
+                    write!(f, "({t1}) -> {t2}")
+                } else {
+                    write!(f, "{t1} -> {t2}")
+                }
+            }
+        }
+    }
+}
 
 impl Display for Term {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -11,8 +28,8 @@ impl Display for Term {
         }
         match self {
             Var(x) => write!(f, "{x}"),
-            Abs { var, body } => {
-                write!(f, "{var} => {body}")
+            Abs { var, ty, body } => {
+                write!(f, "({var}: {ty} => {body})")
             }
             App(t1, t2) => {
                 if matches!(**t1, Abs { .. }) {
