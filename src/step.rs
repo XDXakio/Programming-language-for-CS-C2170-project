@@ -29,12 +29,15 @@ impl Term {
             True => True,
             False => False,
             Zero => Zero,
+            Add(a, b) => Add(a.clone(), b.clone()),
+            Sub(a, b) => Sub(a.clone(), b.clone()),
+            Mul(a, b) => Mul(a.clone(), b.clone()),
             Succ(t1) => Succ(t1.clone()),
             Rec { scrutinee, if_zero, if_succ } => Rec {
                 scrutinee: scrutinee.clone(),
                 if_zero: if_zero.clone(),
                 if_succ: if_succ.clone(),
-            }
+            }       
         }
     }
     /// Applies the `AppAbs` rule returning None if it doesn't apply.
@@ -122,6 +125,14 @@ impl Term {
     /// Applies the `Rec` rule returning None if it doesn't apply.
     pub fn rec(&self) -> Option<Self> {
         if let Rec { scrutinee, if_zero, if_succ } = self {
+            if let Some(step) = scrutinee.step() {
+                return Some(Rec {
+                    scrutinee: Box::new(step),
+                    if_zero: if_zero.clone(),
+                    if_succ: if_succ.clone(),
+                });
+            }
+
             match Term::whnf(scrutinee) {
                 Zero => Some(*if_zero.clone()),
                 Succ(n) => Some(App(
@@ -146,9 +157,10 @@ impl Term {
     /// Does a beta-reduction step returning None if no reduction rule applies.
     /// Note: `AppAbs`, `Ite` and `Rec` and `App1` should come before the other rules.
     pub fn step(&self) -> Option<Self> {
-        self.app_abs()
+        self.arith()
             .or_else(|| self.ite())
             .or_else(|| self.rec())
+            .or_else(|| self.app_abs())
             .or_else(|| self.app1())
             .or_else(|| self.ite1())
             .or_else(|| self.succ1())
