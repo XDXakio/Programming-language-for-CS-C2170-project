@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use programming_language::{module::Module, types::{ type_of, Context }, parser::{ parse_ast, parse_decl }, };
+    use programming_language::{module::Module, parser::{ parse_ast, parse_decl }, };
     
     fn test_repl_success(input: &str, expected_result: &str) {
         let module = Module::new_with_prelude();
