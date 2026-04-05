@@ -44,14 +44,14 @@ where
 }
 
 /// Parses a variable or a module name reference.
-pub fn parse_var<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str, AST> {
-    let (rest, name) = parse_variable_name.parse(input)?;
+pub fn parse_var<'m, 'i>(module: &Module, input: &'i str) -> IResult<&'i str, AST> {
+    let (rest, name) = parse_variable_name(input)?;
     if is_reserved(name) {
         Err(nom::Err::Error(Error::new(input, ErrorKind::Tag)))
     } else if module.get_term(name).is_some() {
-        Ok((rest, Name(name.to_string())))
+        Ok((rest, AST::Name(name.to_string())))
     } else {
-        Ok((rest, Var(name.to_string())))
+        Ok((rest, AST::Var(name.to_string())))
     }
 }
 
@@ -141,6 +141,10 @@ pub fn parse_paren<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i st
     delimited(tag("("), lex(|i| parse_ast(module, i)), tag(")")).parse(input)
 }
 
+pub fn parse_zero(input: &str) -> IResult<&str, AST> {
+    value(Zero, lex(tag("0"))).parse(input)
+}
+
 /// Parses an atomic expression (no infix operators).
 pub fn parse_atom<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str, AST> {
     alt((
@@ -150,6 +154,7 @@ pub fn parse_atom<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str
         |i| parse_lambda(module, i),
         parse_nat,
         |i| parse_var(module, i),
+        parse_zero,
     ))
     .parse(input)
 }
