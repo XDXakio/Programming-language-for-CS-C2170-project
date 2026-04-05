@@ -1,4 +1,4 @@
-use crate::{ast::{self, AST}, term::Term, types::Type};
+use crate::{ast::AST, term::Term, types::Type};
 
 use AST::*;
 
