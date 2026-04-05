@@ -107,12 +107,30 @@ pub fn parse_app<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str,
 
 use crate::types::Type;
 
-fn parse_type(input: &str) -> IResult<&str, Type> {
+fn parse_atomic_type(input: &str) -> IResult<&str, Type> {
     alt((
         value(Type::Nat, tag("Nat")),
         value(Type::Bool, tag("Bool")),
+        delimited(
+            lex(tag("(")),
+            parse_type,   // recursive
+            lex(tag(")")),
+        ),
     ))
     .parse(input)
+}
+
+fn parse_type(input: &str) -> IResult<&str, Type> {
+    let (input, left) = parse_atomic_type(input)?;
+
+    let (input, maybe_arrow) = opt(preceded(space0, tag("->"))).parse(input)?;
+
+    if maybe_arrow.is_some() {
+        let (input, right) = preceded(space0, parse_type).parse(input)?; // recursive → right-associative
+        Ok((input, Type::Func(Box::new(left), Box::new(right))))
+    } else {
+        Ok((input, left))
+    }
 }
 /// Parses a short-form lambda: `x: Type => body`.
 pub fn parse_abs<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str, AST> {
@@ -120,7 +138,7 @@ pub fn parse_abs<'m, 'i>(module: &'m Module, input: &'i str) -> IResult<&'i str,
     
     // Require  : Type
     let (input, _) = lex(tag(":")).parse(input)?;
-    let (input, ty) = parse_type(input)?;
+    let (input, ty) = lex(parse_type).parse(input)?;
 
     // Require '=>'
     let (input, _) = lex(tag("=>")).parse(input)?;
