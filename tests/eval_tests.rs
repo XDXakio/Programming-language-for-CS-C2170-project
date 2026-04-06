@@ -115,3 +115,51 @@ fn test_gt() {
     ));
     assert_eq!(result.to_string(), "true");
 }
+
+#[test]
+fn eval_pair_no_reduce() {
+    let term = Term::Pair(
+        Box::new(Term::Zero),
+        Box::new(Term::True),
+    );
+
+    let result = term.clone().multistep();
+    assert_eq!(result, term);
+}
+
+#[test]
+fn eval_fst() {
+    let term = Term::Fst(Box::new(
+        Term::Pair(Box::new(Term::Zero), Box::new(Term::True))
+    ));
+
+    let result = term.multistep();
+    assert_eq!(result, Term::Zero);
+}
+
+#[test]
+fn eval_snd() {
+    let term = Term::Snd(Box::new(
+        Term::Pair(Box::new(Term::Zero), Box::new(Term::True))
+    ));
+
+    let result = term.multistep();
+    assert_eq!(result, Term::True);
+}
+
+#[test]
+fn eval_nested_pair() {
+    let term = Term::Fst(Box::new(
+        Term::Pair(
+            Box::new(Term::Pair(Box::new(Term::Zero), Box::new(Term::True))),
+            Box::new(Term::True),
+        )
+    ));
+
+    let result = term.multistep();
+
+    assert_eq!(
+        result,
+        Term::Pair(Box::new(Term::Zero), Box::new(Term::True))
+    );
+}

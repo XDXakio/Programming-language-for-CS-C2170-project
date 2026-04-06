@@ -59,3 +59,49 @@ fn test_eq_type_error() {
 
     assert!(result.is_err());
 }
+
+#[test]
+fn pair_basic_type() {
+    let mut ctx = Context::new();
+
+    let term = Term::Pair(
+        Box::new(Term::Zero),
+        Box::new(Term::True),
+    );
+
+    let ty = type_of(&term, &mut ctx).unwrap();
+    assert_eq!(ty.to_string(), "(Nat, Bool)");
+}
+
+#[test]
+fn fst_type() {
+    let mut ctx = Context::new();
+
+    let term = Term::Fst(Box::new(
+        Term::Pair(Box::new(Term::Zero), Box::new(Term::True))
+    ));
+
+    let ty = type_of(&term, &mut ctx).unwrap();
+    assert_eq!(ty, Type::Nat);
+}
+
+#[test]
+fn snd_type() {
+    let mut ctx = Context::new();
+
+    let term = Term::Snd(Box::new(
+        Term::Pair(Box::new(Term::Zero), Box::new(Term::True))
+    ));
+
+    let ty = type_of(&term, &mut ctx).unwrap();
+    assert_eq!(ty, Type::Bool);
+}
+
+#[test]
+fn fst_type_error() {
+    let mut ctx = Context::new();
+
+    let term = Term::Fst(Box::new(Term::Zero));
+
+    assert!(type_of(&term, &mut ctx).is_err());
+}

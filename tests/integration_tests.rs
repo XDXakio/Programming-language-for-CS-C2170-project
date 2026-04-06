@@ -73,3 +73,51 @@ fn test_complex_arithmetic() {
 
     assert_eq!(result.to_string(), "7");
 }
+
+#[test]
+fn parse_and_eval_fst() {
+    let module = Module::new_with_prelude();
+
+    let input = "fst (0, true)";
+    let (_, ast) = parse_ast(&module, input).unwrap();
+
+    let term = ast.desugar(&module);
+    let result = term.multistep();
+
+    assert_eq!(result.to_string(), "0");
+}
+
+#[test]
+fn parse_and_eval_snd() {
+    let module = Module::new_with_prelude();
+
+    let input = "snd (0, true)";
+    let (_, ast) = parse_ast(&module, input).unwrap();
+
+    let term = ast.desugar(&module);
+    let result = term.multistep();
+
+    assert_eq!(result.to_string(), "true");
+}
+
+#[test]
+fn parse_pair_lambda() {
+    let module = Module::new_with_prelude();
+
+    let input = "fst ((x: Nat => x) 5, true)";
+    let (_, ast) = parse_ast(&module, input).unwrap();
+
+    let term = ast.desugar(&module);
+    let result = term.multistep();
+
+    assert_eq!(result.to_string(), "5");
+}
+
+#[test]
+fn fst_non_pair_stuck() {
+    let term = Term::Fst(Box::new(Term::Zero));
+    let result = term.clone().multistep();
+
+    // evaluation shouldn't crash
+    assert_eq!(result, term);
+}
