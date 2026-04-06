@@ -50,6 +50,9 @@ pub enum AST {
     Lt(Box<AST>, Box<AST>),
     Ge(Box<AST>, Box<AST>),
     Gt(Box<AST>, Box<AST>),
+    Pair(Box<AST>, Box<AST>),
+    Fst(Box<AST>),
+    Snd(Box<AST>),
 }
 
 use AST::*;
@@ -353,7 +356,13 @@ impl AST {
                 // CRITICAL: Direct lookup, NO recursion!
                 env.get_term(&name)
                     .unwrap_or_else(|| Term::Var(name))
-            }
+            },
+            Pair(t1, t2) => Term::Pair(
+                Box::new(d(*t1)),
+                Box::new(d(*t2)),
+            ),
+            Fst(t) => Term::Fst(Box::new(d(*t))),
+            Snd(t) => Term::Snd(Box::new(d(*t))),
         }
     }
 }
