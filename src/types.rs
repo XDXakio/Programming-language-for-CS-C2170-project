@@ -8,6 +8,7 @@ pub enum Type {
     Bool,
     Nat,
     Func(Box<Type>, Box<Type>),
+    Pair(Box<Type>, Box<Type>),
 }
 
 pub type Context = HashMap<String, Type>;
@@ -33,6 +34,11 @@ pub enum TypeError {
     },
 
     ExpectedFunction {
+        found: Type,
+        context: &'static str,
+    },
+
+    ExpectedPair {
         found: Type,
         context: &'static str,
     },
@@ -166,6 +172,34 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
                     found: if t1_ty != Nat { t1_ty } else { t2_ty },
                     context: "arithmetic operation",
                 })
+            }
+        }
+
+        Term::Pair(t1, t2) => {
+            let t1_ty = type_of(t1, ctx)?;
+            let t2_ty = type_of(t2, ctx)?;
+            Ok(Type::Pair(Box::new(t1_ty), Box::new(t2_ty)))
+        }
+
+        Term::Fst(t) => {
+            let ty = type_of(t, ctx)?;
+            match ty {
+                Type::Pair(t1, _) => Ok(*t1),
+                other => Err(TypeError::ExpectedPair {
+                    found: other,
+                    context: "fst",
+                }),
+            }
+        }
+
+        Term::Snd(t) => {
+            let ty = type_of(t, ctx)?;
+            match ty {
+                Type::Pair(_, t2) => Ok(*t2),
+                other => Err(TypeError::ExpectedPair {
+                    found: other,
+                    context: "snd",
+                }),
             }
         }
     }
