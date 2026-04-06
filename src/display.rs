@@ -10,6 +10,7 @@ impl Display for Type {
             Type::Nat => write!(f, "Nat"),
             Type::Bool => write!(f, "Bool"),
             Type::Func(t1, t2) => write!(f, "({} -> {})", t1, t2),
+            Type::Pair(t1, t2) => write!(f, "({}, {})", t1, t2),
         }
     }
 }
@@ -49,6 +50,14 @@ impl fmt::Display for TypeError {
                 write!(
                     f,
                     "Expected function in {}, but found {:?}",
+                    context, found
+                )
+            }
+
+            TypeError::ExpectedPair { found, context } => {
+                write!(
+                    f,
+                    "Expected pair in {}, but found {}",
                     context, found
                 )
             }
@@ -102,6 +111,23 @@ impl Display for Term {
             Add(a, b) => write!(f, "{a} + {b}"),
             Sub(a, b) => write!(f, "{a} - {b}"),
             Mul(a, b) => write!(f, "{a} * {b}"),
+            Pair(t1, t2) => write!(f, "({t1}, {t2})"),
+
+            Fst(t) => {
+                if matches!(**t, App(_, _) | Abs { .. }) {
+                    write!(f, "fst ({t})")
+                } else {
+                    write!(f, "fst {t}")
+                }
+            }
+
+            Snd(t) => {
+                if matches!(**t, App(_, _) | Abs { .. }) {
+                    write!(f, "snd ({t})")
+                } else {
+                    write!(f, "snd {t}")
+                }
+            }
         }
     }
 }
