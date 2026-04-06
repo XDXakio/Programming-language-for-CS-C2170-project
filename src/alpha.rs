@@ -70,8 +70,3 @@ pub fn eq_alpha<'l, 'r>(
     }
 }
 
-impl PartialEq for Term {
-    fn eq(&self, other: &Self) -> bool {
-        eq_alpha(vec![], self, vec![], other)
-    }
-}
