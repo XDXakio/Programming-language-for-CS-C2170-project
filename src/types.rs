@@ -15,10 +15,27 @@ pub type Context = HashMap<String, Type>;
 #[derive(Debug, Clone)]
 pub enum TypeError {
     UnboundVariable(String),
-    Mismatch(Type, Type),
-    ExpectedBool(Type),
-    ExpectedNat(Type),
-    ExpectedFunction(Type),
+
+    Mismatch {
+        expected: Type,
+        found: Type,
+        context: &'static str,
+    },
+
+    ExpectedBool {
+        found: Type,
+        context: &'static str,
+    },
+
+    ExpectedNat {
+        found: Type,
+        context: &'static str,
+    },
+
+    ExpectedFunction {
+        found: Type,
+        context: &'static str,
+    },
 }
 
 use Type::*;
@@ -52,10 +69,17 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
                     if *param == t2_type {
                         Ok(*ret)
                     } else {
-                        Err(Mismatch(*param, t2_type))
+                        Err(Mismatch {
+                            expected: *param,
+                            found: t2_type,
+                            context: "function application",
+                        })
                     }
                 }
-                other => Err(ExpectedFunction(other))
+                other => Err(ExpectedFunction {
+                                    found: other,
+                                    context: "function application",
+                                })
             }
         }
 
@@ -64,7 +88,10 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
         Term::Ite { cond, if_true, if_false } => {
             let cond_type = type_of(cond, ctx)?;
             if cond_type != Bool {
-                return Err(ExpectedBool(cond_type));
+                return Err(ExpectedBool {
+                    found: cond_type,
+                    context: "if condition",
+                });
             }
 
             let t1 = type_of(if_true, ctx)?;
@@ -73,7 +100,11 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
             if t1 == t2 {
                 Ok(t1)
             } else {
-                Err(Mismatch(t1, t2))
+                Err(Mismatch {
+                    expected: t1,
+                    found: t2,
+                    context: "if branches",
+                })
             }
         }
 
@@ -84,14 +115,20 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
             if inner == Nat {
                 Ok(Nat)
             } else {
-                Err(ExpectedNat(inner))
+                Err(ExpectedNat {
+                    found: inner,
+                    context: "succ",
+                })
             }
         }
 
         Term::Rec { scrutinee, if_zero, if_succ } => {
             let s_type = type_of(scrutinee, ctx)?;
             if s_type != Nat {
-                return Err(ExpectedNat(s_type));
+                return Err(ExpectedNat {
+                    found: s_type,
+                    context: "succ",
+                })
             }
 
             let z_type = type_of(if_zero, ctx)?;
@@ -103,10 +140,16 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
                         Func(t_ty, result_ty) if *t_ty == z_type => {
                             Ok(*result_ty)
                         }
-                        other => Err(ExpectedFunction(other)),
+                        other => Err(ExpectedFunction {
+                            found: other,
+                            context: "rec successor case",
+                        }),
                     }
                 }
-                other => Err(ExpectedFunction(other)),
+                other => Err(ExpectedFunction {
+                    found: other,
+                    context: "rec successor case",
+                }),
             }
         }
 
@@ -119,9 +162,10 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
             if t1_ty == Type::Nat && t2_ty == Type::Nat {
                 Ok(Type::Nat)
             } else {
-                Err(TypeError::ExpectedNat(
-                    if t1_ty != Type::Nat { t1_ty } else { t2_ty }
-                ))
+                Err(ExpectedNat {
+                    found: if t1_ty != Nat { t1_ty } else { t2_ty },
+                    context: "arithmetic operation",
+                })
             }
         }
     }
