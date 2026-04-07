@@ -1,4 +1,4 @@
-use programming_language::types::{type_of, Context, Type};
+use programming_language::types::{self, Context, Type, TypeError, type_of};
 use programming_language::term::Term;
 use programming_language::ast::AST;
 use programming_language::module::Module;
@@ -104,4 +104,60 @@ fn fst_type_error() {
     let term = Term::Fst(Box::new(Term::Zero));
 
     assert!(type_of(&term, &mut ctx).is_err());
+}
+
+#[test]
+fn test_empty_list_type() {
+    let term = Term::Nil(Some(Type::Nat)); // now carries type
+    let mut ctx = types::empty_ctx();
+    let ty = type_of(&term, &mut ctx).unwrap();
+    assert_eq!(ty, Type::List(Box::new(Type::Nat)));
+}
+
+#[test]
+fn test_single_element_list() {
+    let term = Term::Cons(Box::new(Term::Zero), Box::new(Term::Nil(Some(Type::Nat))));
+    let mut ctx = types::empty_ctx();
+    let ty = type_of(&term, &mut ctx).unwrap();
+    assert_eq!(ty, Type::List(Box::new(Type::Nat)));
+}
+
+#[test]
+fn test_multiple_element_list() {
+    let term = Term::Cons(
+        Box::new(Term::Zero),
+        Box::new(Term::Cons(
+            Box::new(Term::Succ(Box::new(Term::Zero))),
+            Box::new(Term::Nil(Some(Type::Nat))),
+        )),
+    );
+    let mut ctx = types::empty_ctx();
+    let ty = type_of(&term, &mut ctx).unwrap();
+    assert_eq!(ty, Type::List(Box::new(Type::Nat)));
+}
+
+#[test]
+fn test_nested_list() {
+    let inner_list = Term::Cons(Box::new(Term::Zero), Box::new(Term::Nil(Some(Type::Nat))));
+    let term = Term::Cons(Box::new(inner_list), Box::new(Term::Nil(Some(Type::List(Box::new(Type::Nat))))));
+    let mut ctx = types::empty_ctx();
+    let ty = type_of(&term, &mut ctx).unwrap();
+    assert_eq!(ty, Type::List(Box::new(Type::List(Box::new(Type::Nat)))));
+}
+
+#[test]
+fn test_list_type_mismatch() {
+    let term = Term::Cons(
+        Box::new(Term::Zero),
+        Box::new(Term::Cons(Box::new(Term::True), Box::new(Term::Nil(Some(Type::Nat))))),
+    );
+    let mut ctx = types::empty_ctx();
+    let err = type_of(&term, &mut ctx).unwrap_err();
+    match err {
+        TypeError::Mismatch { expected, found, .. } => {
+            assert_eq!(expected, Type::Nat);
+            assert_eq!(found, Type::Bool);
+        }
+        _ => panic!("Expected type mismatch error"),
+    }
 }
