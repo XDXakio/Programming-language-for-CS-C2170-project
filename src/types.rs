@@ -9,6 +9,7 @@ pub enum Type {
     Nat,
     Func(Box<Type>, Box<Type>),
     Pair(Box<Type>, Box<Type>),
+    List(Box<Type>),
 }
 
 pub type Context = HashMap<String, Type>;
@@ -202,5 +203,30 @@ pub fn type_of(term: &Term, ctx: &mut Context) -> Result<Type, TypeError> {
                 }),
             }
         }
+
+        Term::Nil(elem_ty_opt) => {
+            match elem_ty_opt {
+                Some(elem_ty) => Ok(Type::List(Box::new(elem_ty.clone()))),
+                None => Err(TypeError::Mismatch {
+                    expected: Type::List(Box::new(Type::Nat)), // placeholder
+                    found: Type::List(Box::new(Type::Nat)),    // placeholder
+                    context: "cannot infer type of empty list",
+                }),
+            }
+        }
+
+        Term::Cons(head, tail) => {
+            let head_ty = type_of(head, ctx)?;
+            let tail_ty = type_of(tail, ctx)?;
+            match tail_ty {
+                Type::List(boxed_elem_ty) if *boxed_elem_ty == head_ty => Ok(Type::List(Box::new(head_ty))),
+                Type::List(boxed_elem_ty) => Err(Mismatch { expected: *boxed_elem_ty, found: head_ty, context: "list element type mismatch" }),
+                other => Err(ExpectedFunction { found: other, context: "list tail must be list" }),
+            }
+        }
     }
+}
+
+pub fn empty_ctx() -> Context {
+    Context::new()
 }
