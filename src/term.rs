@@ -44,6 +44,9 @@ pub enum Term {
     Snd(Box<Term>),
     Nil(Option<Type>),
     Cons(Box<Term>, Box<Term>),
+    Head(Box<Term>),
+    Tail(Box<Term>),
+    IsEmpty(Box<Term>),
 }
 
 /// Return a variable name which is not in `vars` and starts with `base`
@@ -119,6 +122,10 @@ impl Term {
                 | Term::Sub(_, _)
                 | Term::Mul(_, _)
                 | Term::Nil(_) => {}
+
+                Term::Head(t) => go(t, out),
+                Term::Tail(t) => go(t, out),
+                Term::IsEmpty(t) => go(t, out),
             }
         }
 
@@ -154,6 +161,9 @@ impl Term {
                 h.rename(var, new);
                 t.rename(var, new);
             }
+            Term::Head(t) => t.rename(var, new),
+            Term::Tail(t) => t.rename(var, new),
+            Term::IsEmpty(t) => t.rename(var, new),
         }
     }
 
@@ -229,6 +239,10 @@ impl Term {
                 Box::new(h.subst(var, value)),
                 Box::new(t.subst(var, value)),
             ),
+
+            Head(t) => Head(Box::new(t.subst(var, value))),
+            Tail(t) => Tail(Box::new(t.subst(var, value))),
+            IsEmpty(t) => IsEmpty(Box::new(t.subst(var, value))),
         }
     }
 
