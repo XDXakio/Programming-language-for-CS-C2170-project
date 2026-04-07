@@ -55,6 +55,30 @@ impl Term {
             }
             Nil(t) => Nil(t.clone()),
             Cons(h, t1) => Cons(h.clone(), t1.clone()),
+            Head(t) => {
+                let t_whnf = Term::whnf(t);
+                match t_whnf {
+                    Cons(h, _) => *h,
+                    other => Head(Box::new(other)),
+                }
+            }
+
+            Tail(t) => {
+                let t_whnf = Term::whnf(t);
+                match t_whnf {
+                    Cons(_, tail) => *tail,
+                    other => Tail(Box::new(other)),
+                }
+            }
+
+            IsEmpty(t) => {
+                let t_whnf = Term::whnf(t);
+                match t_whnf {
+                    Nil(_) => True,
+                    Cons(_, _) => False,
+                    other => IsEmpty(Box::new(other)),
+                }
+            }
         }
     }
 
@@ -109,6 +133,59 @@ impl Term {
                     return Some(*v2.clone());
                 }
                 None
+            }
+            _ => None,
+        }
+    }
+
+    pub fn head(&self) -> Option<Self> {
+        match self {
+            Term::Head(t) => {
+                if let Some(t_step) = t.step() {
+                    return Some(Term::Head(Box::new(t_step)));
+                }
+
+                match &**t {
+                    Term::Cons(h, _) => Some(*h.clone()),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn tail(&self) -> Option<Self> {
+        match self {
+            Term::Tail(t) => {
+                // Step inside first
+                if let Some(t_step) = t.step() {
+                    return Some(Term::Tail(Box::new(t_step)));
+                }
+
+                // Apply rule
+                match &**t {
+                    Term::Cons(_, tail) => Some(*tail.clone()),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn is_empty(&self) -> Option<Self> {
+        match self {
+            Term::IsEmpty(t) => {
+                // Step inside first
+                if let Some(t_step) = t.step() {
+                    return Some(Term::IsEmpty(Box::new(t_step)));
+                }
+
+                // Apply rules
+                match &**t {
+                    Term::Nil(_) => Some(Term::True),
+                    Term::Cons(_, _) => Some(Term::False),
+                    _ => None,
+                }
             }
             _ => None,
         }
@@ -231,6 +308,10 @@ impl Term {
             .or_else(|| self.rec())
             .or_else(|| self.fst())
             .or_else(|| self.snd())
+            .or_else(|| self.head())
+            .or_else(|| self.tail())
+            .or_else(|| self.abs())
+            .or_else(|| self.is_empty())
             .or_else(|| self.arith())
             .or_else(|| self.succ1())
             .or_else(|| self.abs())
