@@ -53,6 +53,9 @@ pub enum AST {
     Pair(Box<AST>, Box<AST>),
     Fst(Box<AST>),
     Snd(Box<AST>),
+    Nil,
+    Cons(Box<AST>, Box<AST>),
+    List(Vec<AST>),
 }
 
 use AST::*;
@@ -363,6 +366,32 @@ impl AST {
             ),
             Fst(t) => Term::Fst(Box::new(d(*t))),
             Snd(t) => Term::Snd(Box::new(d(*t))),
+            Nil => Term::Nil(None),
+
+            Cons(h, t) => {
+                Term::Cons(
+                    Box::new(h.desugar(env)),
+                    Box::new(t.desugar(env)),
+                )
+            }
+
+            List(elements) => {
+                elements.iter().rev().fold(Term::Nil(None), |tail, head| {
+                    let head_term = head.clone().desugar(env);
+
+                    // attach type hint to Nil if it’s currently None
+                    let tail = match tail {
+                        Term::Nil(None) => {
+                            let mut ctx = crate::types::empty_ctx();
+                            let ty = crate::types::type_of(&head_term, &mut ctx).ok();
+                            Term::Nil(ty)
+                        }
+                        other => other,
+                    };
+
+                    Term::Cons(Box::new(head_term), Box::new(tail))
+                })
+            }
         }
     }
 }
