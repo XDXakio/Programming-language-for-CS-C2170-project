@@ -159,6 +159,10 @@ pub fn is_zero() -> AST {
     }
 }
 
+pub fn zero() -> AST {
+    Zero
+}
+
 pub fn eq() -> AST {
     Abs {
         var: "n".to_string(),
