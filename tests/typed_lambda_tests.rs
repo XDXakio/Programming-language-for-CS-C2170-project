@@ -57,3 +57,61 @@ fn test_lambda_type_annotation_parsing() {
         panic!("Expected AST::Abs");
     }
 }
+
+#[test]
+fn test_simple_typed_lambda() {
+    let module = Module::new_with_prelude();
+    let input = "fun x: Nat => x";
+    let (_, ast) = parse_ast(&module, input).expect("Failed to parse");
+    let term = ast.desugar(&module);
+    let ty = programming_language::types::type_of(&term, &mut programming_language::types::empty_ctx()).expect("Type error");
+    assert_eq!(ty, Type::Func(Box::new(Type::Nat), Box::new(Type::Nat)));
+}
+
+#[test]
+fn test_lambda_application_2() {
+    let module = Module::new_with_prelude();
+    let input = "(fun x: Nat => succ x) 0";
+    let (_, ast) = parse_ast(&module, input).expect("Failed to parse");
+    let term = ast.desugar(&module);
+    let whnf = Term::whnf(&term).multistep();
+    // Expect Succ(Zero)
+    match whnf {
+        Term::Succ(inner) => assert!(matches!(*inner, Term::Zero)),
+        _ => panic!("Expected Succ(Zero), got {:?}", whnf),
+    }
+}
+
+#[test]
+fn test_list_in_lambda() {
+    let module = Module::new_with_prelude();
+    let input = "(fun x: Nat => [x]) 0";
+    let (_, ast) = parse_ast(&module, input).expect("Failed to parse");
+    let term = ast.desugar(&module);
+    let whnf = Term::whnf(&term);
+    // Expect a singleton list: Cons(Zero, Nil(Some(Nat)))
+    match whnf {
+        Term::Cons(head, tail) => {
+            assert!(matches!(*head, Term::Zero));
+            match *tail {
+                Term::Nil(Some(Type::Nat)) => {},
+                _ => panic!("Expected typed Nil(Nat), got {:?}", tail),
+            }
+        },
+        _ => panic!("Expected singleton list, got {:?}", whnf),
+    }
+}
+
+#[test]
+fn test_list_head_lambda() {
+    let module = Module::new_with_prelude();
+    let input = "(fun l: List(Nat) => head l) [succ 0, 0]";
+    let (_, ast) = parse_ast(&module, input).expect("Failed to parse");
+    let term = ast.desugar(&module);
+    let whnf = Term::whnf(&term).multistep();
+    // Expect first element: Succ(Zero)
+    match whnf {
+        Term::Succ(inner) => assert!(matches!(*inner, Term::Zero)),
+        _ => panic!("Expected Succ(Zero), got {:?}", whnf),
+    }
+}
