@@ -163,6 +163,42 @@ pub fn zero() -> AST {
     Zero
 }
 
+pub fn add() -> AST {
+    Abs {
+        var: "x".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Abs {
+            var: "y".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Add(Box::new(Var("x".to_string())), Box::new(Var("y".to_string())))),
+        }),
+    }
+}
+
+pub fn sub() -> AST {
+    Abs {
+        var: "x".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Abs {
+            var: "y".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Sub(Box::new(Var("x".to_string())), Box::new(Var("y".to_string())))),
+        }),
+    }
+}
+
+pub fn mul() -> AST {
+    Abs {
+        var: "x".to_string(),
+        ty: Type::Nat,
+        body: Box::new(Abs {
+            var: "y".to_string(),
+            ty: Type::Nat,
+            body: Box::new(Mul(Box::new(Var("x".to_string())), Box::new(Var("y".to_string())))),
+        }),
+    }
+}
+
 pub fn eq() -> AST {
     Abs {
         var: "n".to_string(),
@@ -385,21 +421,21 @@ impl AST {
             }
 
             List(elements) => {
-                elements.iter().rev().fold(Term::Nil(None), |tail, head| {
-                    let head_term = head.clone().desugar(env);
+                if elements.is_empty() {
+                    Term::Nil(None) // or could attach a type if annotated
+                } else {
+                    // Infer type from the first element
+                    let first_type = crate::types::type_of(&elements[0].clone().desugar(env), &mut crate::types::empty_ctx()).ok();
 
-                    // attach type hint to Nil if it’s currently None
-                    let tail = match tail {
-                        Term::Nil(None) => {
-                            let mut ctx = crate::types::empty_ctx();
-                            let ty = crate::types::type_of(&head_term, &mut ctx).ok();
-                            Term::Nil(ty)
-                        }
-                        other => other,
-                    };
-
-                    Term::Cons(Box::new(head_term), Box::new(tail))
-                })
+                    // Build the list from first to last
+                    elements.iter().rev().fold(
+                        Term::Nil(first_type.clone()), // attach inferred type to Nil
+                        |tail, head| {
+                            let head_term = head.clone().desugar(env);
+                            Term::Cons(Box::new(head_term), Box::new(tail))
+                        },
+                    )
+                }
             }
 
             Head(t) => Term::Head(Box::new(d(*t))),
