@@ -47,8 +47,8 @@ pub enum Term {
 }
 
 /// Return a variable name which is not in `vars` and starts with `base`
-fn fresh_var<'a>(vars: &'_ HashSet<&'a str>, mut base: String) -> String {
-    while vars.contains(base.as_str()) {
+fn fresh_var<'a>(vars: &'_ HashSet< String>, mut base: String) -> String {
+    while vars.contains(&base) {
         base.push('_');
     }
     base
@@ -67,40 +67,64 @@ pub fn nat(mut n: u64) -> Term {
 }
 
 impl Term {
-    pub fn free_vars(&self) -> HashSet<&str> {
-        fn go<'a>(t: &'a Term, out: &mut HashSet<&'a str>) {
+    pub fn free_vars(&self) -> HashSet<String> {
+        fn go(t: &Term, out: &mut HashSet<String>) {
             match t {
-                Var(v) => { out.insert(v); }
-                Abs { var, ty: _, body } => {
+                Term::Var(v) => {
+                    out.insert(v.clone());
+                }
+
+                Term::Abs { var, ty: _, body } => {
                     go(body, out);
-                    out.remove(var.as_str());
+                    out.remove(var); // remove bound variable
                 }
-                App(l, r) => { go(l, out); go(r, out); }
-                Ite { cond, if_true, if_false } => {
-                    go(cond, out); go(if_true, out); go(if_false, out);
+
+                Term::App(l, r) => {
+                    go(l, out);
+                    go(r, out);
                 }
-                True | False | Zero | Add(_, _) | Sub(_ , _) | Mul(_ , _) => {}
-                Succ(t) => go(t, out),
-                Rec { scrutinee, if_zero, if_succ } => {
-                    go(scrutinee, out); go(if_zero, out); go(if_succ, out);
+
+                Term::Ite { cond, if_true, if_false } => {
+                    go(cond, out);
+                    go(if_true, out);
+                    go(if_false, out);
                 }
-                Pair(t1, t2) => {
+
+                Term::Succ(t) => go(t, out),
+
+                Term::Rec { scrutinee, if_zero, if_succ } => {
+                    go(scrutinee, out);
+                    go(if_zero, out);
+                    go(if_succ, out);
+                }
+
+                Term::Pair(t1, t2) => {
                     go(t1, out);
                     go(t2, out);
                 }
-                Fst(t) => go(t, out),
-                Snd(t) => go(t, out),
-                Nil(_) => {}
-                Cons(h, t) => {
+
+                Term::Fst(t) => go(t, out),
+                Term::Snd(t) => go(t, out),
+
+                Term::Cons(h, t) => {
                     go(h, out);
                     go(t, out);
                 }
+
+                // No variables inside these
+                Term::True
+                | Term::False
+                | Term::Zero
+                | Term::Add(_, _)
+                | Term::Sub(_, _)
+                | Term::Mul(_, _)
+                | Term::Nil(_) => {}
             }
         }
 
-        let mut s = HashSet::new();
-        go(self, &mut s);
-        s
+        let mut vars = HashSet::new();
+        go(self, &mut vars);
+        vars
     }
 
     pub fn rename(&mut self, var: &str, new: &str) {
@@ -143,10 +167,11 @@ impl Term {
                     Abs { var: b, ty, body } // binder shadows var
                 } else {
                     let fv_value = value.free_vars();
-                    if fv_value.contains(b.as_str()) {
-                        let mut used: HashSet<&str> = body.free_vars();
-                        used.extend(fv_value.iter().copied());
-                        used.insert(b.as_str()); used.insert(var);
+                    if fv_value.contains(&b) {
+                        let mut used: HashSet<String> = body.free_vars();
+                        used.extend(fv_value.into_iter());
+                        used.insert(b.clone());
+                        used.insert(var.to_string());
                         let fresh = fresh_var(&used, b.clone());
                         let mut body_owned = *body.clone();
                         body_owned.rename(b.as_str(), &fresh);
@@ -198,7 +223,7 @@ impl Term {
 
             Snd(t) => Snd(Box::new(t.subst(var, value))),
 
-            Nil(_) => Nil(None),
+            Nil(ty) => Nil(ty.clone()),
 
             Cons(h, t) => Cons(
                 Box::new(h.subst(var, value)),
