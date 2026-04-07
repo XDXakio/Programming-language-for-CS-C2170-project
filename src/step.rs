@@ -53,6 +53,8 @@ impl Term {
                     other => Snd(Box::new(other)),
                 }
             }
+            Nil(t) => Nil(t.clone()),
+            Cons(h, t1) => Cons(h.clone(), t1.clone()),
         }
     }
 
