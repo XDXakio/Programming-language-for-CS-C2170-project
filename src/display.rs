@@ -166,6 +166,30 @@ impl Display for Term {
                     }
                 }
             }
+
+            Term::Head(t) => {
+                if matches!(**t, App(_, _) | Abs { .. }) {
+                    write!(f, "head ({t})")
+                } else {
+                    write!(f, "head {t}")
+                }
+            }
+
+            Term::Tail(t) => {
+                if matches!(**t, App(_, _) | Abs { .. }) {
+                    write!(f, "tail ({t})")
+                } else {
+                    write!(f, "tail {t}")
+                }
+            }
+
+            Term::IsEmpty(t) => {
+                if matches!(**t, App(_, _) | Abs { .. }) {
+                    write!(f, "is_empty ({t})")
+                } else {
+                    write!(f, "is_empty {t}")
+                }
+            }
         }
     }
 }
