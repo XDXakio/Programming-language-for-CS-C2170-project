@@ -5,6 +5,7 @@ use nom::bytes::complete::{tag, take_while1};
 use nom::character::complete::{digit1, line_ending, space0};
 
 use nom::combinator::eof;
+use nom::combinator::map;
 use nom::combinator::{fail, map_res, opt, value};
 use nom::error::{Error, ErrorKind};
 use nom::multi::fold_many0;
@@ -114,9 +115,14 @@ fn parse_atomic_type(input: &str) -> IResult<&str, Type> {
     alt((
         value(Type::Nat, tag("Nat")),
         value(Type::Bool, tag("Bool")),
+        // Add List(T)
+        map(
+            delimited(tag("List("), parse_type, tag(")")),
+            |ty| Type::List(Box::new(ty)),
+        ),
         delimited(
             lex(tag("(")),
-            parse_type,   // recursive
+            parse_type,
             lex(tag(")")),
         ),
     ))
