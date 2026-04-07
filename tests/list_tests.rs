@@ -1,3 +1,4 @@
+use programming_language::module::Module;
 use programming_language::term::Term;
 use programming_language::types::Type;
 use Term::*;
@@ -48,4 +49,23 @@ fn test_collect_list() {
     assert_eq!(elems.len(), 2);
     assert_eq!(elems[0], &Zero);
     assert_eq!(elems[1], &Succ(Box::new(Zero)));
+}
+
+#[test]
+fn test_complex_list() {
+    let m = Module::new_with_prelude();
+
+    // [succ zero, zero]
+    let list = Cons(
+        Box::new(App(Box::new(m.get_term("succ").unwrap()), Box::new(Zero))),
+        Box::new(Cons(Box::new(Zero), Box::new(Nil(Some(Type::Nat))))),
+    );
+
+    let head = list.head_eval();
+    let tail = list.tail_eval();
+    let tail_head = tail.as_ref().unwrap().head_eval();
+
+    assert_eq!(head, Some(App(Box::new(m.get_term("succ").unwrap()), Box::new(Zero))));
+    assert_eq!(tail_head, Some(Zero));
+    assert_eq!(list.is_empty_eval(), Some(False));
 }
